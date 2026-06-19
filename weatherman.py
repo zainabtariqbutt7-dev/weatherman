@@ -10,40 +10,67 @@ BLUE = "\033[94m"
 RESET = "\033[0m"
 
 
-def read_files(folder):
+def read_weather_file(file_path):
     weather_data = []
 
-    if not os.path.isdir(folder):
-        print(f"Error: folder '{folder}' not found.")
+    if not os.path.isfile(file_path):
+        print(f"Error: file '{file_path}' not found.")
         return weather_data
 
-    for file_name in os.listdir(folder):
-        if file_name.endswith(".txt"):
-            file_path = os.path.join(folder, file_name)
+    try:
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as file:
+            lines = []
 
+            for line in file:
+                if line.strip() != "":
+                    lines.append(line)
+
+    except OSError:
+        print(f"Error: could not read '{file_path}'.")
+        return weather_data
+
+    reader = csv.DictReader(lines, skipinitialspace=True)
+
+    for row in reader:
+        date_text = row.get("PKT") or row.get("GST")
+
+        if date_text:
             try:
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as file:
-                    lines = []
+                row["date"] = datetime.strptime(date_text.strip(), "%Y-%m-%d")
+                weather_data.append(row)
+            except ValueError:
+                pass
 
-                    for line in file:
-                        if line.strip() != "":
-                            lines.append(line)
+    return weather_data
 
-            except OSError:
-                print(f"Warning: could not read '{file_name}', skipping.")
-                continue
 
-            reader = csv.DictReader(lines, skipinitialspace=True)
+def read_files(path, year=None, month=None):
+    weather_data = []
 
-            for row in reader:
-                date_text = row.get("PKT") or row.get("GST")
+    if os.path.isfile(path):
+        return read_weather_file(path)
 
-                if date_text:
-                    try:
-                        row["date"] = datetime.strptime(date_text, "%Y-%m-%d")
-                        weather_data.append(row)
-                    except ValueError:
-                        pass
+    if not os.path.isdir(path):
+        print(f"Error: path '{path}' not found.")
+        return weather_data
+
+    month_short = None
+
+    if month is not None:
+        month_short = month_name[month][:3]
+
+    for file_name in os.listdir(path):
+        if not file_name.endswith(".txt"):
+            continue
+
+        if year is not None and str(year) not in file_name:
+            continue
+
+        if month_short is not None and month_short not in file_name:
+            continue
+
+        file_path = os.path.join(path, file_name)
+        weather_data.extend(read_weather_file(file_path))
 
     return weather_data
 
@@ -217,45 +244,62 @@ def parse_year_month(date):
 
 def main():
     if len(sys.argv) != 4:
+
         return
 
     option = sys.argv[1]
     date = sys.argv[2]
-    folder = sys.argv[3]
-
-    data = read_files(folder)
-
-    if len(data) == 0:
-        print("No weather data found.")
-        return
+    path = sys.argv[3]
 
     if option == "-e":
         year = parse_year(date)
 
         if year is not None:
+            data = read_files(path, year=year)
+
+            if len(data) == 0:
+                print("No weather data found.")
+                return
+
             yearly_report(data, year)
 
     elif option == "-a":
         year, month = parse_year_month(date)
 
         if year is not None:
+            data = read_files(path, year=year, month=month)
+
+            if len(data) == 0:
+                print("No weather data found.")
+                return
+
             monthly_average(data, year, month)
 
     elif option == "-c":
         year, month = parse_year_month(date)
 
         if year is not None:
+            data = read_files(path, year=year, month=month)
+
+            if len(data) == 0:
+                print("No weather data found.")
+                return
+
             monthly_chart(data, year, month)
 
     elif option == "-b":
         year, month = parse_year_month(date)
 
         if year is not None:
+            data = read_files(path, year=year, month=month)
+
+            if len(data) == 0:
+                print("No weather data found.")
+                return
+
             bonus_chart(data, year, month)
 
     else:
         print("Wrong option.")
         print("Use -e, -a, -c, or -b")
-
-
 main()
