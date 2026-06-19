@@ -78,7 +78,10 @@ def yearly_report(data, year):
 
 
 def monthly_average(data, year, month):
-    
+    max_sum = 0
+    min_sum = 0
+    humidity_sum = 0
+    count = 0
 
     for row in data:
         if row["date"].year == year and row["date"].month == month:
@@ -89,7 +92,10 @@ def monthly_average(data, year, month):
             except:
                 continue
 
-           
+            max_sum += max_temp
+            min_sum += min_temp
+            humidity_sum += humidity
+            count += 1
 
     if count == 0:
         print("No data found.")
@@ -148,7 +154,6 @@ def main():
     if len(sys.argv) < 4:
         print("Wrong command.")
         return
-    option = sys.argv[0]
     option = sys.argv[1]
     date = sys.argv[2]
     folder = sys.argv[3]
